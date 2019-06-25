@@ -53,6 +53,13 @@ import org.springframework.util.StringUtils;
  * @see #FileSystemResource(Path)
  * @see java.io.File
  * @see java.nio.file.Files
+ *
+ * 对 java.io.file 资源类型进行封装，只跟 File 打交道，基本上与 FileSystemResource 也可以打交道，
+ *
+ * 支持文件和 URL 的形式，实现 WrittableResource 接口，
+ *
+ * 且从 Spring 5.0 开始，FileSystemResource 使用 NIO2 进行读写交互。
+ *
  */
 public class FileSystemResource extends AbstractResource implements WritableResource {
 
