@@ -38,6 +38,10 @@ import org.springframework.util.ResourceUtils;
  * @see org.springframework.core.io.support.ResourcePatternResolver
  * @see org.springframework.context.ApplicationContext
  * @see org.springframework.context.ResourceLoaderAware
+ *
+ * 为 Spring 资源加载的统一抽象，具体的资源加载则由相应的实现类来完成
+ *
+ * 所以我们可以将 ResourceLoader 称为统一资源定位器
  */
 public interface ResourceLoader {
 
