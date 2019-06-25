@@ -69,11 +69,24 @@ public class DefaultDocumentLoader implements DocumentLoader {
 	public Document loadDocument(InputSource inputSource, EntityResolver entityResolver,
 			ErrorHandler errorHandler, int validationMode, boolean namespaceAware) throws Exception {
 
+		/**
+		 *
+		 * <1> 调用 #createDocumentBuilderFactory(...) 方法，创建 javax.xml.parsers.DocumentBuilderFactory 对象
+		 */
 		DocumentBuilderFactory factory = createDocumentBuilderFactory(validationMode, namespaceAware);
 		if (logger.isTraceEnabled()) {
 			logger.trace("Using JAXP provider [" + factory.getClass().getName() + "]");
 		}
+		/**
+		 *
+		 * <2> 调用 #createDocumentBuilder(DocumentBuilderFactory factory, EntityResolver entityResolver,ErrorHandler errorHandler) 方法，创建 javax.xml.parsers.DocumentBuilder 对象。
+		 */
 		DocumentBuilder builder = createDocumentBuilder(factory, entityResolver, errorHandler);
+
+		/**
+		 *
+		 * <3> 调用 DocumentBuilder#parse(InputSource) 方法，解析 InputSource ，返回 Document 对象。
+		 */
 		return builder.parse(inputSource);
 	}
 
@@ -88,14 +101,19 @@ public class DefaultDocumentLoader implements DocumentLoader {
 	protected DocumentBuilderFactory createDocumentBuilderFactory(int validationMode, boolean namespaceAware)
 			throws ParserConfigurationException {
 
+		// 创建 DocumentBuilderFactory
 		DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
 		factory.setNamespaceAware(namespaceAware);
 
 		if (validationMode != XmlValidationModeDetector.VALIDATION_NONE) {
 			factory.setValidating(true);
+
+			// XSD 模式下，设置 factory 的属性
 			if (validationMode == XmlValidationModeDetector.VALIDATION_XSD) {
 				// Enforce namespace aware for XSD...
 				factory.setNamespaceAware(true);
+
+				// 设置 SCHEMA_LANGUAGE_ATTRIBUTE
 				try {
 					factory.setAttribute(SCHEMA_LANGUAGE_ATTRIBUTE, XSD_SCHEMA_LANGUAGE);
 				}
@@ -128,10 +146,15 @@ public class DefaultDocumentLoader implements DocumentLoader {
 			@Nullable EntityResolver entityResolver, @Nullable ErrorHandler errorHandler)
 			throws ParserConfigurationException {
 
+		// 创建 DocumentBuilder 对象
 		DocumentBuilder docBuilder = factory.newDocumentBuilder();
+
+		//设置 DocumentBuilder 的 EntityResolver 属性。
 		if (entityResolver != null) {
 			docBuilder.setEntityResolver(entityResolver);
 		}
+
+		// 设置 ErrorHandler 属性
 		if (errorHandler != null) {
 			docBuilder.setErrorHandler(errorHandler);
 		}
