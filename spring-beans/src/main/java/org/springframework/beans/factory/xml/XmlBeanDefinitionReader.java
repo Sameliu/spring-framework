@@ -647,6 +647,10 @@ public class XmlBeanDefinitionReader extends AbstractBeanDefinitionReader {
 	 * reading bean definitions from an XML document.
 	 * <p>The default implementation instantiates the specified "documentReaderClass".
 	 * @see #setDocumentReaderClass
+	 *
+	 * 实例化 BeanDefinitionDocumentReader 对象。
+	 *
+	 * documentReaderClass 的默认值为 DefaultBeanDefinitionDocumentReader.class 。
 	 */
 	protected BeanDefinitionDocumentReader createBeanDefinitionDocumentReader() {
 		return BeanUtils.instantiateClass(this.documentReaderClass);

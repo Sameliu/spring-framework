@@ -55,6 +55,10 @@ import org.springframework.util.StringUtils;
  * @author Rob Harrop
  * @author Erik Wiersma
  * @since 18.12.2003
+ *
+ * BeanDefinitionDocumentReader 有且只有一个默认实现类 DefaultBeanDefinitionDocumentReader 。
+ *
+ * 它对 #registerBeanDefinitions(...)
  */
 public class DefaultBeanDefinitionDocumentReader implements BeanDefinitionDocumentReader {
 
@@ -93,6 +97,13 @@ public class DefaultBeanDefinitionDocumentReader implements BeanDefinitionDocume
 	@Override
 	public void registerBeanDefinitions(Document doc, XmlReaderContext readerContext) {
 		this.readerContext = readerContext;
+
+		/**
+		 *
+		 * 获得 XML Document Root Element
+		 *
+		 * 执行注册 BeanDefinition
+		 */
 		doRegisterBeanDefinitions(doc.getDocumentElement());
 	}
 
@@ -125,16 +136,42 @@ public class DefaultBeanDefinitionDocumentReader implements BeanDefinitionDocume
 		// the new (child) delegate with a reference to the parent for fallback purposes,
 		// then ultimately reset this.delegate back to its original (parent) reference.
 		// this behavior emulates a stack of delegates without actually necessitating one.
+		/**
+		 *
+		 * 记录老的 BeanDefinitionParserDelegate 对象
+		 */
 		BeanDefinitionParserDelegate parent = this.delegate;
+		/**
+		 *
+		 * <1> 创建 BeanDefinitionParserDelegate 对象，并进行设置到 delegate 。
+		 *
+		 * BeanDefinitionParserDelegate 是一个重要的类，它负责解析 BeanDefinition。
+		 */
 		this.delegate = createDelegate(getReaderContext(), root, parent);
 
+		/**
+		 *
+		 * <2> 检查 <beans /> 根标签的命名空间是否为空，或者是 http://www.springframework.org/schema/beans 。
+		 */
 		if (this.delegate.isDefaultNamespace(root)) {
+			/**
+			 *
+			 * <2.1> 判断是否 <beans /> 上配置了 profile 属性。
+			 */
 			String profileSpec = root.getAttribute(PROFILE_ATTRIBUTE);
 			if (StringUtils.hasText(profileSpec)) {
+				/**
+				 *
+				 * <2.2> 使用分隔符切分，可能有多个 profile 。
+				 */
 				String[] specifiedProfiles = StringUtils.tokenizeToStringArray(
 						profileSpec, BeanDefinitionParserDelegate.MULTI_VALUE_ATTRIBUTE_DELIMITERS);
 				// We cannot use Profiles.of(...) since profile expressions are not supported
 				// in XML config. See SPR-12458 for details.
+				/**
+				 *
+				 * <2.3> 判断，如果所有 profile 都无效，则 return 不进行注册。
+				 */
 				if (!getReaderContext().getEnvironment().acceptsProfiles(specifiedProfiles)) {
 					if (logger.isDebugEnabled()) {
 						logger.debug("Skipped XML bean definition file due to specified profiles [" + profileSpec +
@@ -145,8 +182,21 @@ public class DefaultBeanDefinitionDocumentReader implements BeanDefinitionDocume
 			}
 		}
 
+		/**
+		 *
+		 * 解析前处理
+		 */
 		preProcessXml(root);
+		/**
+		 *
+		 * <4> 调用 #parseBeanDefinitions(Element root, BeanDefinitionParserDelegate delegate) 方法，进行解析逻辑。
+		 */
 		parseBeanDefinitions(root, this.delegate);
+
+		/**
+		 *
+		 * 解析后处理
+		 */
 		postProcessXml(root);
 
 		this.delegate = parent;
@@ -154,8 +204,15 @@ public class DefaultBeanDefinitionDocumentReader implements BeanDefinitionDocume
 
 	protected BeanDefinitionParserDelegate createDelegate(
 			XmlReaderContext readerContext, Element root, @Nullable BeanDefinitionParserDelegate parentDelegate) {
-
+		/**
+		 *
+		 * 创建 BeanDefinitionParserDelegate 对象
+		 */
 		BeanDefinitionParserDelegate delegate = new BeanDefinitionParserDelegate(readerContext);
+		/**
+		 *
+		 * 默认初始化
+		 */
 		delegate.initDefaults(root, parentDelegate);
 		return delegate;
 	}
@@ -164,6 +221,12 @@ public class DefaultBeanDefinitionDocumentReader implements BeanDefinitionDocume
 	 * Parse the elements at the root level in the document:
 	 * "import", "alias", "bean".
 	 * @param root the DOM root element of the document
+	 *
+	 * Spring 有两种 Bean 声明方式：
+	 *
+	 *     配置文件式声明：<bean id="studentService" class="org.springframework.core.StudentService" /> 。对应 <1> 处。
+	 *
+	 *     自定义注解方式：<tx:annotation-driven> 。对应 <2> 处。
 	 */
 	protected void parseBeanDefinitions(Element root, BeanDefinitionParserDelegate delegate) {
 		if (delegate.isDefaultNamespace(root)) {
@@ -172,15 +235,27 @@ public class DefaultBeanDefinitionDocumentReader implements BeanDefinitionDocume
 				Node node = nl.item(i);
 				if (node instanceof Element) {
 					Element ele = (Element) node;
+					/**
+					 *
+					 * <1> 如果根节点或子节点使用默认命名空间，调用 #parseDefaultElement(Element ele, BeanDefinitionParserDelegate delegate) 方法，执行默认解析。
+					 */
 					if (delegate.isDefaultNamespace(ele)) {
 						parseDefaultElement(ele, delegate);
 					}
+					/**
+					 *
+					 * 如果该节点非默认命名空间，执行自定义解析
+					 */
 					else {
 						delegate.parseCustomElement(ele);
 					}
 				}
 			}
 		}
+		/**
+		 *
+		 * <2> 如果根节点或子节点不使用默认命名空间，调用 BeanDefinitionParserDelegate#parseCustomElement(Element ele) 方法，执行自定义解析。
+		 */
 		else {
 			delegate.parseCustomElement(root);
 		}
