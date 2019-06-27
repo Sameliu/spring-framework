@@ -280,22 +280,67 @@ public class DefaultBeanDefinitionDocumentReader implements BeanDefinitionDocume
 	/**
 	 * Parse an "import" element and load the bean definitions
 	 * from the given resource into the bean factory.
+	 *
+	 * 经历过 Spring 配置文件的小伙伴都知道，如果工程比较大，配置文件的维护会让人觉得恐怖，文件太多了
+	 *
+	 * 想象将所有的配置都放在一个 spring.xml 配置文件中，哪种后怕感是不是很明显？
+	 *
+	 * 所有针对这种情况 Spring 提供了一个分模块的思路，利用 import 标签，例如我们可以构造一个这样的 spring.xml 。
+	 *
+	 * spring.xml 配置文件中，使用 import 标签的方式导入其他模块的配置文件。
+	 *
+	 *     如果有配置需要修改直接修改相应配置文件即可。
+	 *
+	 *     若有新的模块需要引入直接增加 import 即可。
+	 *
+	 * 这样大大简化了配置后期维护的复杂度，同时也易于管理。
+	 *
 	 */
 	protected void importBeanDefinitionResource(Element ele) {
+		/**
+		 *
+		 * <1> 获取 source 属性的值，该值表示资源的路径。
+		 */
 		String location = ele.getAttribute(RESOURCE_ATTRIBUTE);
+		/**
+		 *
+		 * 为空，则直接退出。
+		 */
 		if (!StringUtils.hasText(location)) {
 			getReaderContext().error("Resource location must not be empty", ele);
 			return;
 		}
 
 		// Resolve system properties: e.g. "${user.dir}"
+		/**
+		 *
+		 * <2> 解析路径中的系统属性，如 "${user.dir}" 。
+		 */
 		location = getReaderContext().getEnvironment().resolveRequiredPlaceholders(location);
-
+		/**
+		 *
+		 * 实际 Resource 集合，即 import 的地址，有哪些 Resource 资源
+		 */
 		Set<Resource> actualResources = new LinkedHashSet<>(4);
 
 		// Discover whether the location is an absolute or relative URI
+		/**
+		 *
+		 * <3> 判断资源路径 location 是绝对路径还是相对路径。
+		 */
 		boolean absoluteLocation = false;
 		try {
+			/**
+			 *
+			 * 判断 location 是绝对路径还是相对路径
+			 *
+			 * 以 classpath*: 或者 classpath: 开头的为绝对路径。
+			 *
+			 * 能够通过该 location 构建出 java.net.URL 为绝对路径。
+			 *
+			 * 根据 location 构造 java.net.URI 判断调用 #isAbsolute() 方法，判断是否为绝对路径。
+			 *
+			 */
 			absoluteLocation = ResourcePatternUtils.isUrl(location) || ResourceUtils.toURI(location).isAbsolute();
 		}
 		catch (URISyntaxException ex) {
@@ -304,8 +349,16 @@ public class DefaultBeanDefinitionDocumentReader implements BeanDefinitionDocume
 		}
 
 		// Absolute or relative?
+		/**
+		 *
+		 * <4> 如果是绝对路径，则调递归调用 Bean 的解析过程，进行另一次的解析。
+		 */
 		if (absoluteLocation) {
 			try {
+				/**
+				 *
+				 * 添加配置文件地址的 Resource 到 actualResources 中，并加载相应的 BeanDefinition 们
+				 */
 				int importCount = getReaderContext().getReader().loadBeanDefinitions(location, actualResources);
 				if (logger.isTraceEnabled()) {
 					logger.trace("Imported " + importCount + " bean definitions from URL location [" + location + "]");
@@ -316,17 +369,58 @@ public class DefaultBeanDefinitionDocumentReader implements BeanDefinitionDocume
 						"Failed to import bean definitions from URL location [" + location + "]", ele, ex);
 			}
 		}
+		/**
+		 *
+		 * <5> 如果是相对路径，则先计算出绝对路径得到 Resource，然后进行解析。
+		 *
+		 *
+		 * 如果 location 是相对路径，则会根据相应的 Resource 计算出相应的相对路径的 Resource 对象 ，然后：
+		 *
+		 * 若该 Resource 存在，则调用 XmlBeanDefinitionReader#loadBeanDefinitions() 方法，进行 BeanDefinition 加载。
+		 *
+		 * 否则，构造一个绝对 location( 即 StringUtils.applyRelativePath(baseLocation, location) 处的代码)
+		 *
+		 * 并调用 #loadBeanDefinitions(String location, Set<Resource> actualResources) 方法，与绝对路径过程一样。
+		 */
 		else {
 			// No URL -> considering resource location as relative to the current file.
 			try {
 				int importCount;
+				/**
+				 *
+				 * 创建相对地址的 Resource
+				 */
 				Resource relativeResource = getReaderContext().getResource().createRelative(location);
+				/**
+				 *
+				 * 存在
+				 */
 				if (relativeResource.exists()) {
+					/**
+					 *
+					 * 加载 relativeResource 中的 BeanDefinition 们
+					 */
 					importCount = getReaderContext().getReader().loadBeanDefinitions(relativeResource);
+					/**
+					 *
+					 * 添加到 actualResources 中
+					 */
 					actualResources.add(relativeResource);
 				}
+				/**
+				 *
+				 * 不存在
+				 */
 				else {
+					/**
+					 *
+					 * 获得跟路径地址
+					 */
 					String baseLocation = getReaderContext().getResource().getURL().toString();
+					/**
+					 *
+					 * 添加配置文件地址的 Resource 到 actualResources 中，并加载相应的 BeanDefinition 们
+					 */
 					importCount = getReaderContext().getReader().loadBeanDefinitions(
 							StringUtils.applyRelativePath(baseLocation, location), actualResources);
 				}
@@ -342,6 +436,10 @@ public class DefaultBeanDefinitionDocumentReader implements BeanDefinitionDocume
 						"Failed to import bean definitions from relative location [" + location + "]", ele, ex);
 			}
 		}
+		/**
+		 *
+		 * <6> 通知监听器，完成解析。
+		 */
 		Resource[] actResArray = actualResources.toArray(new Resource[0]);
 		getReaderContext().fireImportProcessed(location, actResArray, extractSource(ele));
 	}

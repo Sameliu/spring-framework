@@ -209,8 +209,21 @@ public abstract class AbstractBeanDefinitionReader implements BeanDefinitionRead
 	 * @see #getResourceLoader()
 	 * @see #loadBeanDefinitions(org.springframework.core.io.Resource)
 	 * @see #loadBeanDefinitions(org.springframework.core.io.Resource[])
+	 *
+	 * 处理绝对路径
+	 *
+	 *
+	 * 首先，获取 ResourceLoader 对象。
+	 * 然后，根据不同的 ResourceLoader 执行不同的逻辑，主要是可能存在多个 Resource 。
+	 * 最终，都会回归到 XmlBeanDefinitionReader#loadBeanDefinitions(Resource... resources) 方法，所以这是一个递归的过程。
+	 * 另外，获得到的 Resource 的对象或数组，都会添加到 actualResources 中。
+	 *
 	 */
 	public int loadBeanDefinitions(String location, @Nullable Set<Resource> actualResources) throws BeanDefinitionStoreException {
+		/**
+		 *
+		 * 获得 ResourceLoader 对象
+		 */
 		ResourceLoader resourceLoader = getResourceLoader();
 		if (resourceLoader == null) {
 			throw new BeanDefinitionStoreException(
@@ -220,8 +233,20 @@ public abstract class AbstractBeanDefinitionReader implements BeanDefinitionRead
 		if (resourceLoader instanceof ResourcePatternResolver) {
 			// Resource pattern matching available.
 			try {
+				/**
+				 *
+				 *  获得 Resource 数组，因为 Pattern 模式匹配下，可能有多个 Resource 。例如说，Ant 风格的 location
+				 */
 				Resource[] resources = ((ResourcePatternResolver) resourceLoader).getResources(location);
+				/**
+				 *
+				 * 加载 BeanDefinition 们
+				 */
 				int count = loadBeanDefinitions(resources);
+				/**
+				 *
+				 * 添加到 actualResources 中
+				 */
 				if (actualResources != null) {
 					Collections.addAll(actualResources, resources);
 				}
@@ -237,8 +262,20 @@ public abstract class AbstractBeanDefinitionReader implements BeanDefinitionRead
 		}
 		else {
 			// Can only load single resources by absolute URL.
+			/**
+			 *
+			 * 获得 Resource 对象，
+			 */
 			Resource resource = resourceLoader.getResource(location);
+			/**
+			 *
+			 * 加载 BeanDefinition 们
+			 */
 			int count = loadBeanDefinitions(resource);
+			/**
+			 *
+			 * 添加到 actualResources 中
+			 */
 			if (actualResources != null) {
 				actualResources.add(resource);
 			}
