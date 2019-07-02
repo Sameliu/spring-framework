@@ -65,6 +65,7 @@ public abstract class AbstractResource implements Resource {
 		catch (IOException ex) {
 			// Fall back to stream existence: can we open the stream?
 			try {
+				// 基于 InputStream 进行判断
 				getInputStream().close();
 				return true;
 			}
