@@ -160,6 +160,16 @@ public class DefaultSingletonBeanRegistry extends SimpleAliasRegistry implements
 	 * <p>To be called for eager registration of singletons.
 	 * @param beanName the name of the bean
 	 * @param singletonObject the singleton object
+	 *
+	 *  一个 put、一个 add、两个 remove 操作。
+	 *
+	 * 【put】singletonObjects 属性，单例 bean 的缓存。
+	 *
+	 * 【remove】singletonFactories 属性，单例 bean Factory 的缓存。
+	 *
+	 * 【remove】earlySingletonObjects 属性，“早期”创建的单例 bean 的缓存。
+	 *
+	 * 【add】registeredSingletons 属性，已经注册的单例缓存。
 	 */
 	protected void addSingleton(String beanName, Object singletonObject) {
 		synchronized (this.singletonObjects) {
@@ -247,6 +257,9 @@ public class DefaultSingletonBeanRegistry extends SimpleAliasRegistry implements
 	public Object getSingleton(String beanName, ObjectFactory<?> singletonFactory) {
 		Assert.notNull(beanName, "Bean name must not be null");
 		synchronized (this.singletonObjects) {
+			/**
+			 * <1> 处，再次检查缓存是否已经加载过，如果已经加载了则直接返回，否则开始加载过程。
+			 */
 			Object singletonObject = this.singletonObjects.get(beanName);
 			if (singletonObject == null) {
 				if (this.singletonsCurrentlyInDestruction) {
@@ -257,12 +270,18 @@ public class DefaultSingletonBeanRegistry extends SimpleAliasRegistry implements
 				if (logger.isDebugEnabled()) {
 					logger.debug("Creating shared instance of singleton bean '" + beanName + "'");
 				}
+				/**
+				 * <2> 处，调用 #beforeSingletonCreation(String beanName) 方法，记录加载单例 bean 之前的加载状态，即前置处理。
+				 */
 				beforeSingletonCreation(beanName);
 				boolean newSingleton = false;
 				boolean recordSuppressedExceptions = (this.suppressedExceptions == null);
 				if (recordSuppressedExceptions) {
 					this.suppressedExceptions = new LinkedHashSet<>();
 				}
+				/**
+				 * <3> 处，调用参数传递的 ObjectFactory 的 #getObject() 方法，实例化 bean 。
+				 */
 				try {
 					singletonObject = singletonFactory.getObject();
 					newSingleton = true;
@@ -287,8 +306,14 @@ public class DefaultSingletonBeanRegistry extends SimpleAliasRegistry implements
 					if (recordSuppressedExceptions) {
 						this.suppressedExceptions = null;
 					}
+					/**
+					 * <4> 处，调用 #afterSingletonCreation(String beanName) 方法，进行加载单例后的后置处理。
+					 */
 					afterSingletonCreation(beanName);
 				}
+				/**
+				 * <5> 处，调用 #addSingleton(String beanName, Object singletonObject) 方法，将结果记录并加入值缓存中，同时删除加载 bean 过程中所记录的一些辅助状态。
+				 */
 				if (newSingleton) {
 					addSingleton(beanName, singletonObject);
 				}

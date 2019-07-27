@@ -466,32 +466,62 @@ public abstract class AbstractBeanFactory extends FactoryBeanRegistrySupport imp
 					// It's a prototype -> create a new instance.
 					Object prototypeInstance = null;
 					try {
+						/**
+						 * <1> 处，调用 #beforePrototypeCreation(String beanName) 方法，记录加载原型模式 bean 之前的加载状态，即前置处理。
+						 */
 						beforePrototypeCreation(beanName);
+						/**
+						 * <2> 处，调用 #createBean(String beanName) 方法，创建一个 bean 实例对象。
+						 */
 						prototypeInstance = createBean(beanName, mbd, args);
 					}
 					finally {
+						/**
+						 * <3> 处，调用 #afterSingletonCreation(String beanName) 方法，进行加载原型模式 bean 后的后置处理。
+						 */
 						afterPrototypeCreation(beanName);
 					}
+					/**
+					 * <4> 处，加载了单例 bean 后，调用 #getObjectForBeanInstance(Object beanInstance, String name, String beanName, RootBeanDefinition mbd) 方法，从 bean 实例中获取对象。
+					 */
 					bean = getObjectForBeanInstance(prototypeInstance, name, beanName, mbd);
 				}
 
 				else {
-					// 从指定的 scope 下创建 bean
+					/**从指定的 scope 下创建 bean
+					 *
+					 * 获取 scopeName 对应的 scope 对象。
+					 */
 					String scopeName = mbd.getScope();
 					final Scope scope = this.scopes.get(scopeName);
 					if (scope == null) {
 						throw new IllegalStateException("No Scope registered for scope name '" + scopeName + "'");
 					}
 					try {
+						/**
+						 * 从指定的 scope 下创建 bean
+						 */
 						Object scopedInstance = scope.get(beanName, () -> {
+							/**
+							 * 加载前置处理
+							 */
 							beforePrototypeCreation(beanName);
 							try {
+								/**
+								 * 创建 bean 对象
+								 */
 								return createBean(beanName, mbd, args);
 							}
 							finally {
+								/**
+								 * 加载后缀处理
+								 */
 								afterPrototypeCreation(beanName);
 							}
 						});
+						/**
+						 * 从 Bean 实例中获取对象
+						 */
 						bean = getObjectForBeanInstance(scopedInstance, name, beanName, mbd);
 					}
 					catch (IllegalStateException ex) {
