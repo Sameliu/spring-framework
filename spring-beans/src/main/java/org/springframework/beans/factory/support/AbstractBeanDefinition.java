@@ -1071,12 +1071,17 @@ public abstract class AbstractBeanDefinition extends BeanMetadataAttributeAccess
 	 * Validate and prepare the method overrides defined for this bean.
 	 * Checks for existence of a method with the specified name.
 	 * @throws BeanDefinitionValidationException in case of validation failure
+	 *
+	 * 如果存在 methodOverrides ，则获取所有的 override method ，然后通过迭代的方法一次调用 #prepareMethodOverride(MethodOverride mo) 方法。
 	 */
 	public void prepareMethodOverrides() throws BeanDefinitionValidationException {
 		// Check that lookup methods exists.
 		if (hasMethodOverrides()) {
 			Set<MethodOverride> overrides = getMethodOverrides().getOverrides();
 			synchronized (overrides) {
+				/**
+				 * 循环，执行 prepareMethodOverride
+				 */
 				for (MethodOverride mo : overrides) {
 					prepareMethodOverride(mo);
 				}
@@ -1090,6 +1095,18 @@ public abstract class AbstractBeanDefinition extends BeanMetadataAttributeAccess
 	 * marking it as not overloaded if none found.
 	 * @param mo the MethodOverride object to validate
 	 * @throws BeanDefinitionValidationException in case of validation failure
+	 *
+	 *
+	 * 根据方法名称，从 class 中获取该方法名的个数：
+	 *
+	 * 如果个数为 0 ，则抛出 BeanDefinitionValidationException 异常。
+	 *
+	 * 如果个数为 1 ，则设置该重载方法没有被重载。
+	 *
+	 * 若一个类中存在多个重载方法，则在方法调用的时候还需要根据参数类型来判断到底重载的是哪个方法。在设置重载的时候其实这里做了一个小小优化，那就是当 count == 1 时，设置 overloaded = false ，这样表示该方法没有重载。这样，在后续调用的时候，便可以直接找到方法而不需要进行方法参数的校验。
+	 *
+	 * 诚然，其实 mbdToUse.prepareMethodOverrides() 代码块，并没有做什么实质性的工作，只是对 methodOverrides 属性做了一些简单的校验而已。
+	 *
 	 */
 	protected void prepareMethodOverride(MethodOverride mo) throws BeanDefinitionValidationException {
 		int count = ClassUtils.getMethodCountForName(getBeanClass(), mo.getMethodName());
