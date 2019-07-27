@@ -316,7 +316,6 @@ public abstract class AbstractBeanFactory extends FactoryBeanRegistrySupport imp
 			 *
 			 * 主要原因还是在于，和 Spring 解决循环依赖的策略有关。
 			 *
-			 *
 			 * 对于单例( Singleton )模式， Spring 在创建 Bean 的时候并不是等 Bean 完全创建完成后才会将 Bean 添加至缓存中
 			 *
 			 * 而是不等 Bean 创建完成就会将创建 Bean 的 ObjectFactory 提早加入到缓存中
@@ -398,8 +397,7 @@ public abstract class AbstractBeanFactory extends FactoryBeanRegistrySupport imp
 						 *
 						 * 若给定的依赖 bean 已经注册为依赖给定的 bean
 						 *
-						 *  即循环依赖的情况，抛出 BeanCreationException 异常
-						 *
+						 * 即循环依赖的情况，抛出 BeanCreationException 异常
 						 *
 						 * 每个 Bean 都不是单独工作的，它会依赖其他 Bean，其他 Bean 也会依赖它。
 						 *
@@ -410,10 +408,15 @@ public abstract class AbstractBeanFactory extends FactoryBeanRegistrySupport imp
 							throw new BeanCreationException(mbd.getResourceDescription(), beanName,
 									"Circular depends-on relationship between '" + beanName + "' and '" + dep + "'");
 						}
-						// 缓存依赖调用 TODO 芋艿
+						/**
+						 * <2>缓存依赖调用 TODO 芋艿
+						 */
 						registerDependentBean(dep, beanName);
 						try {
-							// 递归处理依赖 Bean
+							/**
+							 * <3> 递归处理依赖 Bean
+							 */
+
 							getBean(dep);
 						}
 						catch (NoSuchBeanDefinitionException ex) {
@@ -1183,7 +1186,8 @@ public abstract class AbstractBeanFactory extends FactoryBeanRegistrySupport imp
 	protected boolean isPrototypeCurrentlyInCreation(String beanName) {
 		Object curVal = this.prototypesCurrentlyInCreation.get();
 		return (curVal != null &&
-				(curVal.equals(beanName) || (curVal instanceof Set && ((Set<?>) curVal).contains(beanName))));
+				(curVal.equals(beanName)
+						|| (curVal instanceof Set && ((Set<?>) curVal).contains(beanName))));
 	}
 
 	/**
@@ -1288,7 +1292,13 @@ public abstract class AbstractBeanFactory extends FactoryBeanRegistrySupport imp
 	 * @return the original bean name
 	 */
 	protected String originalBeanName(String name) {
+		/**
+		 * <1> 处，#transformedBeanName(String name) 方法，是对 name 进行转换，获取真正的 beanName 。
+		 */
 		String beanName = transformedBeanName(name);
+		/**
+		 * <2> 处，如果 name 是以 “&” 开头的，则加上 “&” ，因为在 #transformedBeanName(String name) 方法，将 “&” 去掉了，这里补上。
+		 */
 		if (name.startsWith(FACTORY_BEAN_PREFIX)) {
 			beanName = FACTORY_BEAN_PREFIX + beanName;
 		}
@@ -1363,10 +1373,18 @@ public abstract class AbstractBeanFactory extends FactoryBeanRegistrySupport imp
 	 */
 	protected RootBeanDefinition getMergedLocalBeanDefinition(String beanName) throws BeansException {
 		// Quick check on the concurrent map first, with minimal locking.
+		/**
+		 * 快速从缓存中获取，如果不为空则直接返回。
+		 */
 		RootBeanDefinition mbd = this.mergedBeanDefinitions.get(beanName);
 		if (mbd != null) {
 			return mbd;
 		}
+		/**
+		 * 获取 RootBeanDefinition
+		 *
+		 * 如果返回的是 BeanDefinition 的子类 bean 的话，则合并父类相关属性。
+		 */
 		return getMergedBeanDefinition(beanName, getBeanDefinition(beanName));
 	}
 
@@ -1720,12 +1738,27 @@ public abstract class AbstractBeanFactory extends FactoryBeanRegistrySupport imp
 	 * @param beanName the name of the bean
 	 */
 	protected void markBeanAsCreated(String beanName) {
+		/**
+		 * 没有创建
+		 */
 		if (!this.alreadyCreated.contains(beanName)) {
+			/**
+			 * 加上安全锁
+			 */
 			synchronized (this.mergedBeanDefinitions) {
+				/**
+				 * 再检查一次，DCL 双检查模式
+				 */
 				if (!this.alreadyCreated.contains(beanName)) {
 					// Let the bean definition get re-merged now that we're actually creating
 					// the bean... just in case some of its metadata changed in the meantime.
+					/**
+					 * 从 mergedBeanDefinitions 中删除 beanName，并在下次访问时重新创建它。
+					 */
 					clearMergedBeanDefinition(beanName);
+					/**
+					 * 添加嗷已创建 bean 集合中
+					 */
 					this.alreadyCreated.add(beanName);
 				}
 			}
