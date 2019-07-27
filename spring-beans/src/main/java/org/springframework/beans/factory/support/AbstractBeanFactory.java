@@ -1792,6 +1792,13 @@ public abstract class AbstractBeanFactory extends FactoryBeanRegistrySupport imp
 			Object beanInstance, String name, String beanName, @Nullable RootBeanDefinition mbd) {
 
 		// Don't let calling code try to dereference the factory if the bean isn't a factory.
+		/**
+		 * <1> 处，若 name 为工厂相关的（以 & 开头），且 beanInstance 为 NullBean 类型则直接返回
+		 *
+		 * 如果 beanInstance 不为 FactoryBean 类型则抛出 BeanIsNotAFactoryException 异常。
+		 *
+		 * 这里主要是校验 beanInstance 的正确性。
+		 */
 		if (BeanFactoryUtils.isFactoryDereference(name)) {
 			if (beanInstance instanceof NullBean) {
 				return beanInstance;
@@ -1804,10 +1811,27 @@ public abstract class AbstractBeanFactory extends FactoryBeanRegistrySupport imp
 		// Now we have the bean instance, which may be a normal bean or a FactoryBean.
 		// If it's a FactoryBean, we use it to create a bean instance, unless the
 		// caller actually wants a reference to the factory.
+
+		/**
+		 * <2> 处，如果 beanInstance 不为 FactoryBean 类型
+		 *
+		 * 或者 name 也不是与工厂相关的，则直接返回 beanInstance 这个 Bean 对象。
+		 *
+		 * 这里主要是对非 FactoryBean 类型处理。
+		 */
 		if (!(beanInstance instanceof FactoryBean) || BeanFactoryUtils.isFactoryDereference(name)) {
 			return beanInstance;
 		}
 
+		/**
+		 * <3> 处，如果 BeanDefinition 为空，则从 factoryBeanObjectCache 中加载 Bean 对象。
+		 *
+		 * 如果还是空，则可以断定 beanInstance 一定是 FactoryBean 类型
+		 *
+		 * 则委托 #getObjectFromFactoryBean(FactoryBean<?> factory, String beanName, boolean shouldPostProcess) 方法，进行处理
+		 *
+		 * 使用 FactoryBean 获得 Bean 对象。
+		 */
 		Object object = null;
 		if (mbd == null) {
 			object = getCachedObjectForFactoryBean(beanName);
