@@ -152,6 +152,8 @@ public abstract class AbstractAutowireCapableBeanFactory extends AbstractBeanFac
 	/**
 	 * The name of the currently created bean, for implicit dependency registration
 	 * on getBean etc invocations triggered from a user-specified Supplier callback.
+	 *
+	 * 当前线程，正在创建的 Bean 对象的名字
 	 */
 	private final NamedThreadLocal<String> currentlyCreatedBean = new NamedThreadLocal<>("Currently created bean");
 
@@ -1260,6 +1262,9 @@ public abstract class AbstractAutowireCapableBeanFactory extends AbstractBeanFac
 	 */
 	protected BeanWrapper createBeanInstance(String beanName, RootBeanDefinition mbd, @Nullable Object[] args) {
 		// Make sure bean class is actually resolved at this point.
+		/**
+		 *  解析 bean ，将 bean 类名解析为 class 引用。
+		 */
 		Class<?> beanClass = resolveBeanClass(mbd, beanName);
 
 		if (beanClass != null && !Modifier.isPublic(beanClass.getModifiers()) && !mbd.isNonPublicAccessAllowed()) {
@@ -1267,20 +1272,38 @@ public abstract class AbstractAutowireCapableBeanFactory extends AbstractBeanFac
 					"Bean class isn't public, and non-public access not allowed: " + beanClass.getName());
 		}
 
+		/**
+		 * <1> 处，如果存在 Supplier 回调，则调用 #obtainFromSupplier(Supplier<?> instanceSupplier, String beanName) 方法，进行初始化。
+		 */
 		Supplier<?> instanceSupplier = mbd.getInstanceSupplier();
 		if (instanceSupplier != null) {
 			return obtainFromSupplier(instanceSupplier, beanName);
 		}
 
+		/**
+		 * <2> 处，如果存在工厂方法，则使用工厂方法进行初始化。
+		 *
+		 * 使用 FactoryBean 的 factory-method 来创建，支持静态工厂和实例工厂
+		 */
 		if (mbd.getFactoryMethodName() != null) {
 			return instantiateUsingFactoryMethod(beanName, mbd, args);
 		}
 
 		// Shortcut when re-creating the same bean...
+		/**
+		 * <3> 处，首先判断缓存，如果缓存中存在，即已经解析过了，则直接使用已经解析了的。
+		 *
+		 * 根据 constructorArgumentsResolved 参数来判断
+		 */
 		boolean resolved = false;
 		boolean autowireNecessary = false;
 		if (args == null) {
 			synchronized (mbd.constructorArgumentLock) {
+				/**
+				 * 如果已缓存的解析的构造函数或者工厂方法不为空，则可以利用构造函数解析
+				 *
+				 * 因为需要根据参数确认到底使用哪个构造函数，该过程比较消耗性能，所有采用缓存机制
+				 */
 				if (mbd.resolvedConstructorOrFactoryMethod != null) {
 					resolved = true;
 					autowireNecessary = mbd.constructorArgumentsResolved;
@@ -1288,15 +1311,24 @@ public abstract class AbstractAutowireCapableBeanFactory extends AbstractBeanFac
 			}
 		}
 		if (resolved) {
+			/**
+			 * <3.1> 处，是使用构造函数自动注入，即调用 #autowireConstructor(String beanName, RootBeanDefinition mbd, Constructor<?>[] ctors, Object[] explicitArgs) 方法。
+			 */
 			if (autowireNecessary) {
 				return autowireConstructor(beanName, mbd, null, null);
 			}
 			else {
+				/**
+				 * <3.2> 处，还是默认构造函数，即调用 #instantiateBean(final String beanName, final RootBeanDefinition mbd) 方法。
+				 */
 				return instantiateBean(beanName, mbd);
 			}
 		}
 
 		// Candidate constructors for autowiring?
+		/**
+		 * <4> 处，如果缓存中没有，则需要先确定到底使用哪个构造函数来完成解析工作，因为一个类有多个构造函数，每个构造函数都有不同的构造参数，所以需要根据参数来锁定构造函数并完成初始化。
+		 */
 		Constructor<?>[] ctors = determineConstructorsFromBeanPostProcessors(beanClass, beanName);
 		if (ctors != null || mbd.getResolvedAutowireMode() == AUTOWIRE_CONSTRUCTOR ||
 				mbd.hasConstructorArgumentValues() || !ObjectUtils.isEmpty(args)) {
@@ -1304,12 +1336,18 @@ public abstract class AbstractAutowireCapableBeanFactory extends AbstractBeanFac
 		}
 
 		// Preferred constructors for default construction?
+		/**
+		 * <4.1> 处，如果存在参数，则使用相应的带有参数的构造函数，即调用 #autowireConstructor(String beanName, RootBeanDefinition mbd, Constructor<?>[] ctors, Object[] explicitArgs) 方法。
+		 */
 		ctors = mbd.getPreferredConstructors();
 		if (ctors != null) {
 			return autowireConstructor(beanName, mbd, ctors, null);
 		}
 
 		// No special handling: simply use no-arg constructor.
+		/**
+		 * <4.2> 处，否则，使用默认构造函数，即调用 #instantiateBean(final String beanName, final RootBeanDefinition mbd) 方法。
+		 */
 		return instantiateBean(beanName, mbd);
 	}
 
@@ -1323,13 +1361,24 @@ public abstract class AbstractAutowireCapableBeanFactory extends AbstractBeanFac
 	 */
 	protected BeanWrapper obtainFromSupplier(Supplier<?> instanceSupplier, String beanName) {
 		Object instance;
-
+		/**
+		 * 获得原创建的 Bean 的对象名
+		 */
 		String outerBean = this.currentlyCreatedBean.get();
+		/**
+		 * 设置新的 Bean 的对象名，到 currentlyCreatedBean 中
+		 */
 		this.currentlyCreatedBean.set(beanName);
 		try {
+			/**
+			 * <1> 首先，调用 Supplier 的 get() 方法，获得一个 Bean 实例对象。
+			 */
 			instance = instanceSupplier.get();
 		}
 		finally {
+			/**
+			 * 设置原创建的 Bean 的对象名，到 currentlyCreatedBean 中
+			 */
 			if (outerBean != null) {
 				this.currentlyCreatedBean.set(outerBean);
 			}
@@ -1337,11 +1386,19 @@ public abstract class AbstractAutowireCapableBeanFactory extends AbstractBeanFac
 				this.currentlyCreatedBean.remove();
 			}
 		}
-
+		/**
+		 * 未创建 Bean 对象，则创建 NullBean 对象
+		 */
 		if (instance == null) {
 			instance = new NullBean();
 		}
+		/**
+		 * <2> 然后，根据该实例对象构造一个 BeanWrapper 对象 bw 。
+		 */
 		BeanWrapper bw = new BeanWrapperImpl(instance);
+		/**
+		 * <3> 最后，初始化该对象。
+		 */
 		initBeanWrapper(bw);
 		return bw;
 	}
