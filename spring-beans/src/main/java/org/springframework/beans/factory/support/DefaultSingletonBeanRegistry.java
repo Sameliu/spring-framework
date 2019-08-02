@@ -187,6 +187,14 @@ public class DefaultSingletonBeanRegistry extends SimpleAliasRegistry implements
 	 * resolve circular references.
 	 * @param beanName the name of the bean
 	 * @param singletonFactory the factory for the singleton object
+	 *
+	 * singletonFactories 这个三级缓存才是解决 Spring Bean 循环依赖的诀窍所在。
+	 *
+	 * 同时这段代码发生在 #createBeanInstance(...) 方法之后，也就是说这个 bean 其实已经被创建出来了，但是它还不是很完美（没有进行属性填充和初始化）
+	 *
+	 * 但是对于其他依赖它的对象而言已经足够了（可以根据对象引用定位到堆中对象），能够被认出来了。
+	 *
+	 * 所以 Spring 在这个时候，选择将该对象提前曝光出来让大家认识认识。
 	 */
 	protected void addSingletonFactory(String beanName, ObjectFactory<?> singletonFactory) {
 		Assert.notNull(singletonFactory, "Singleton factory must not be null");
@@ -216,11 +224,11 @@ public class DefaultSingletonBeanRegistry extends SimpleAliasRegistry implements
 	@Nullable
 	protected Object getSingleton(String beanName, boolean allowEarlyReference) {
 		/**
-		 * 第一步，从 singletonObjects 中，获取 Bean 对象。
+		 * 第一步，从 singletonObjects 中，获取 Bean 对象。	一级缓存
 		 */
 		Object singletonObject = this.singletonObjects.get(beanName);
 		/**
-		 * 第二步，若为空且当前 bean 正在创建中，则从 earlySingletonObjects 中获取 Bean 对象。
+		 * 第二步，若为空且当前 bean 正在创建中，则从 earlySingletonObjects 中获取 Bean 对象。	二级缓存
 		 */
 		if (singletonObject == null && isSingletonCurrentlyInCreation(beanName)) {
 			/**
@@ -231,7 +239,11 @@ public class DefaultSingletonBeanRegistry extends SimpleAliasRegistry implements
 				/**
 				 * 第三步，若为空且允许提前创建，则从 singletonFactories 中获取相应的 ObjectFactory 对象。
 				 *
-				 * 若不为空，则调用其 ObjectFactory#getObject(String name) 方法，创建 Bean 对象，然后将其加入到 earlySingletonObjects ，然后从 singletonFactories 删除。
+				 * 若不为空，则调用其 ObjectFactory#getObject(String name) 方法，创建 Bean 对象
+				 *
+				 * 然后将其加入到 earlySingletonObjects ，然后从 singletonFactories 删除。
+				 *
+				 * 三级缓存
 				 */
 				if (singletonObject == null && allowEarlyReference) {
 					ObjectFactory<?> singletonFactory = this.singletonFactories.get(beanName);
