@@ -31,6 +31,34 @@ package org.springframework.beans.factory;
  * @author Chris Beams
  * @author Juergen Hoeller
  * @since 3.1
+ *
+ *
+ *LoadTimeWeaverAware：加载Spring Bean时织入第三方模块，如AspectJ
+ *
+ * BeanClassLoaderAware：加载Spring Bean的类加载器
+ *
+ * BootstrapContextAware：资源适配器BootstrapContext，如JCA,CCI
+ *
+ * ResourceLoaderAware：底层访问资源的加载器
+ *
+ * BeanFactoryAware：声明BeanFactory
+ *
+ * PortletConfigAware：PortletConfig
+ *
+ * PortletContextAware：PortletContext
+ *
+ * ServletConfigAware：ServletConfig
+ *
+ * ServletContextAware：ServletContext
+ *
+ * MessageSourceAware：国际化
+ *
+ * ApplicationEventPublisherAware：应用事件
+ *
+ * NotificationPublisherAware：JMX通知
+ *
+ * BeanNameAware：声明Spring Bean的名字
+
  */
 public interface Aware {
 
