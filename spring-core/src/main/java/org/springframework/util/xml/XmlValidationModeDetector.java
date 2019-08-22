@@ -119,7 +119,7 @@ public class XmlValidationModeDetector {
 				}
 				/**
 				 *
-				 * <2>  调用 #hasOpeningTag(String content) 方法，判断如果这一行包含 < ，并且 < 紧跟着的是字幕，则为 XSD 验证模式，返回true。
+				 * <2>  调用 #hasOpeningTag(String content) 方法，判断如果这一行包含 < ，并且 < 紧跟着的是字母，则为 XSD 验证模式，返回true。
 				 */
 				if (hasOpeningTag(content)) {
 					// End of meaningful data...
